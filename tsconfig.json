@@ -1,0 +1,11 @@
+{
+    "extends": "@ymeskini/tsconfig",
+    "compilerOptions": {
+      "module": "ES2020",
+      "moduleResolution": "Bundler",
+      "isolatedModules": true,
+      "noEmit": true
+    },
+    "include": ["./src"],
+    "exclude": ["node_modules", "dist"]
+}

@@ -1,0 +1,15 @@
+/.git
+/node_modules
+/.github
+.dockerignore
+.env
+.env.example
+.eslintrc.js
+.gitignore
+.nvmrc
+.prettierrc.js
+tsconfig.json
+Dockerfile
+Dockerfile.dev
+README.md
+fly.toml

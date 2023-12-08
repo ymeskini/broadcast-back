@@ -1,0 +1,34 @@
+# fly.toml app configuration file generated for node-template on 2023-11-28T14:10:35+01:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+# TODO set the name of your app here
+app = "node-template"
+primary_region = "cdg"
+
+[build]
+  dockerfile = "Dockerfile"
+  ignorefile = ".dockerignore"
+  build-target = "deployment"
+
+[deploy]
+  strategy = "rolling"
+
+[env]
+  PORT = "3000"
+  SESSION_DOMAIN = "youssefmeskini.me"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  # you may need to 1 machine running
+  min_machines_running = 0
+  processes = ["app"]
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 1024

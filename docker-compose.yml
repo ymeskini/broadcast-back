@@ -1,0 +1,30 @@
+services:
+  app:
+    restart: always
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - '4444:4444'
+    env_file: .env
+    volumes:
+      - ./src:/app/src
+    links: 
+      - redis
+  redis:
+    image: redis:7-alpine
+    command: redis-server --requirepass 123 --loglevel warning
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+  mongo:
+    image: mongo:7
+    command: mongod --quiet --logpath /dev/null
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongo_data:/data/db
+volumes:
+  redis_data:
+  mongo_data:
