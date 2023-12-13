@@ -1,18 +1,24 @@
 import { Queue, Worker } from 'bullmq';
-import { ServerClient } from 'postmark';
+import { MailerSend, EmailParams, Sender, Recipient } from 'mailersend';
 
-import { envVariables } from '../../lib/env.js';
+import { __DEV__, envVariables } from '../../lib/env.js';
 import { sharedRedisConnection } from './redisConnection.js';
 
-const client = new ServerClient(envVariables.POSTMARK_API_KEY);
-type ReturnedData = Awaited<ReturnType<typeof client.sendEmailWithTemplate>>;
+const mailerSend = new MailerSend({
+  apiKey: envVariables.MAIL_API_KEY,
+});
+
+const sentFrom = new Sender(envVariables.EMAIL_SUPPORT, 'Youssef Meskini');
+
+type ReturnedData = Awaited<ReturnType<typeof mailerSend.email.send>>;
+
+const templateId = {
+  signup: '3z0vklo76yvg7qrx',
+} as const;
 
 type EmailData = {
-  welcome: {
-    product_url: string;
-  };
-  password_reset: {
-    token: string;
+  signup: {
+    code: string;
   };
 };
 
@@ -36,13 +42,27 @@ export const emailQueue = new Queue<QueueData, ReturnedData, 'email'>('email', {
 
 new Worker<QueueData, ReturnedData, 'email'>(
   'email',
-  (job) =>
-    client.sendEmailWithTemplate({
-      From: envVariables.EMAIL_SUPPORT,
-      To: job.data.to,
-      TemplateAlias: job.data.templateKey,
-      TemplateModel: job.data.data,
-    }),
+  (job) => {
+    const recipients = [new Recipient(job.data.to)];
+    const emailParams = new EmailParams()
+      .setFrom(sentFrom)
+      .setTo(recipients)
+      .setReplyTo(sentFrom)
+      .setSubject('Welcome to the moderation chat!')
+      .setTemplateId(templateId[job.data.templateKey])
+      .setVariables([
+        {
+          email: job.data.to,
+          substitutions: [
+            {
+              var: 'code',
+              value: job.data.data.code,
+            },
+          ],
+        },
+      ]);
+    return mailerSend.email.send(emailParams);
+  },
   {
     removeOnComplete: {
       count: 10,

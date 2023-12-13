@@ -11,16 +11,18 @@ import { globalErrorHandler } from './infra/middleware/errorHandler.js';
 import { AppError } from './lib/AppError.js';
 import { RealtimeRepository } from './infra/realtime.gateway.js';
 import { redis } from './infra/modules/redis.js';
-import { authRouter } from './infra/auth.routes.js';
 import { healthRouter } from './infra/health.routes.js';
 import { JWTProvider } from './infra/jwt.provider.js';
+import { initAuthModule } from './app/auth/auth.module.js';
 
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 const mongoClient = new MongoClient(envVariables.MONGO_DB_URL);
+const db = mongoClient.db("broadcast");
 export const jwtProvider = new JWTProvider();
 const realtimeRepository = new RealtimeRepository(wss, redis, jwtProvider);
+const authModule = initAuthModule();
 
 Sentry.init({
   enabled: !__DEV__,
@@ -44,7 +46,7 @@ const start = async () => {
   initMiddleware(app, redis);
 
   // ==== ROUTES ====
-  app.use('/auth', authRouter);
+  app.use('/auth', authModule);
   app.use('/health', healthRouter);
   // ================
 

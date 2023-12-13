@@ -1,1 +1,6 @@
-module.exports = require('@ymeskini/prettier-config');
+import defaultConfig from '@ymeskini/prettier-config';
+
+/** @type {import("prettier").Config} */
+export default {
+    ...defaultConfig,
+};

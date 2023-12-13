@@ -8,13 +8,17 @@ import RedisStore from 'connect-redis';
 
 import { __DEV__, envVariables } from '../../lib/env.js';
 import { RedisClientType } from '../modules/redis.js';
+import { AppError } from '../../lib/AppError.js';
 
 declare module 'express-session' {
   interface SessionData {
-    // here you can add the properties you want to the session
+    secretOtp?: string;
+    email?: string;
+    userId?: string;
   }
 }
 
+const ORIGINS = ["http://localhost:5173"];
 
 export const initMiddleware = (app: Express, redis: RedisClientType) => {
   const redisStore = new RedisStore({
@@ -28,7 +32,20 @@ export const initMiddleware = (app: Express, redis: RedisClientType) => {
     .use(express.json())
     .use(express.urlencoded({ extended: true }))
     .use(compression())
-    .use(cors())
+    .use(
+      cors({
+        origin: function (origin, callback) {
+          if (origin && ORIGINS.indexOf(origin) !== -1 || __DEV__) {
+            callback(null, true);
+          } else {
+            callback(new AppError('Forbidden', 403));
+          }
+        },
+        methods: ['POST', 'GET'],
+        optionsSuccessStatus: 200,
+        credentials: true,
+      }),
+    )
     .use(helmet())
     .use(
       session({
