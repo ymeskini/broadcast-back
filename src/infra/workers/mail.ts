@@ -5,7 +5,7 @@ import { envVariables } from '../../lib/env.js';
 import { sharedRedisConnection } from './redisConnection.js';
 
 const mailerSend = new MailerSend({
-  apiKey: envVariables.MAIL_API_KEY,
+  apiKey: envVariables.EMAIL_API_KEY,
 });
 
 const sentFrom = new Sender(envVariables.EMAIL_SUPPORT, 'Youssef Meskini');

@@ -68,8 +68,7 @@ const start = async () => {
     .use(globalErrorHandler());
 
   server.listen(envVariables.PORT, () => {
-    logger.info(`Server is running at http://localhost:
-    ${envVariables.PORT}`);
+    logger.info(`Server is running at http://localhost:${envVariables.PORT}`);
   });
 };
 
