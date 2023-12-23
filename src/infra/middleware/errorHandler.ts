@@ -1,7 +1,6 @@
 import { ErrorRequestHandler, Response } from 'express';
-import { STATUS_CODES } from 'node:http';
 import { ZodError } from 'zod';
-import { errors } from 'jose';
+import { errors as JoseErrors } from 'jose';
 
 import { AppError } from '../../lib/AppError.js';
 import { __DEV__ } from '../../lib/env.js';
@@ -13,21 +12,22 @@ const sendErrorDev = (err: AppError, res: Response) => {
     message: err.message,
     stack: err.stack,
     error: err,
+    status: err.statusCode,
   });
 };
 
 const sendErrorProd = (err: AppError, res: Response) => {
   if (err.isOperational) {
-    res.status(err.statusCode).json({
-      statusCode: err.statusCode,
-      error: STATUS_CODES[err.statusCode],
+    res.json({
+      message: err.message,
+      status: err.statusCode,
     });
   } else {
     // don't leak the error to the client
     logger.error(err);
-    res.status(500).json({
-      statusCode: 500,
-      message: STATUS_CODES[500],
+    res.json({
+      message: 'Something went wrong',
+      status: 500,
     });
   }
 };
@@ -40,7 +40,7 @@ export const globalErrorHandler =
     err.statusCode = err.statusCode || 500;
     const error = { ...err };
 
-    if (err instanceof errors.JOSEError) {
+    if (err instanceof JoseErrors.JOSEError) {
       error.statusCode = 401;
       error.isOperational = true;
     }
@@ -48,7 +48,6 @@ export const globalErrorHandler =
     if (err instanceof ZodError) {
       error.statusCode = 400;
       error.isOperational = true;
-      logger.info(err.issues);
     }
 
     if (__DEV__) {

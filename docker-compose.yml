@@ -25,6 +25,16 @@ services:
       - '27017:27017'
     volumes:
       - mongo_data:/data/db
+  ngrok:
+    image: ngrok/ngrok:alpine
+    restart: unless-stopped
+    command:
+      - "start"
+      - "--all"
+      - "--config"
+      - "/etc/ngrok.yml"
+    volumes:
+      - ./ngrok.yml:/etc/ngrok.yml
 volumes:
   redis_data:
   mongo_data:

@@ -61,6 +61,7 @@
     "@ymeskini/tsconfig": "^1.1.0",
     "chokidar": "^3.5.3",
     "eslint": "^8.53.0",
+    "ngrok": "^5.0.0-beta.2",
     "prettier": "^3.0.3",
     "testcontainers": "^10.2.2",
     "typescript": "^5.2.2"

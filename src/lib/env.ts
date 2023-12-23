@@ -6,6 +6,7 @@ const envSchema = z.object({
   AWS_SECRET_ACCESS_KEY: z.string(),
   AWS_S3_BUCKET_NAME: z.string(),
   EMAIL_SUPPORT: z.string(),
+  EMAIL_SIGNATURE_SECRET: z.string(),
   ENVIRONMENT: z.string().optional(),
   JWT_SECRET: z.string(),
   MAIL_API_KEY: z.string(),

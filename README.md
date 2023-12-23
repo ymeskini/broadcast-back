@@ -6,6 +6,13 @@ First run:
 npm run generate:keys
 ```
 
+## Tunneling
+For webhooks to work you'll need to use a tunneling service [ngrok](https://ngrok.com/). Copy the config file `ngrok.example.yml` to `ngrok.yml` and fill in the required values.
+
+Then run:
+```shell
+
+
 Then you'll need Docker installed and run:
 ```shell
 docker-compose up --build

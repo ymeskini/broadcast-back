@@ -1,0 +1,11 @@
+# https://ngrok.com/docs/agent/config/#overview
+web_addr: 0.0.0.0:4040
+authtoken: <TOKEN>
+region: eu
+version: 2
+console_ui: true
+tunnels:
+  myapp:
+    addr: app:4444
+    proto: http
+    domain: <DOMAIN>

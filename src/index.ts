@@ -14,15 +14,16 @@ import { redis } from './infra/modules/redis.js';
 import { healthRouter } from './infra/health.routes.js';
 import { JWTProvider } from './infra/jwt.provider.js';
 import { initAuthModule } from './app/auth/auth.module.js';
+import { emailQueue } from './infra/workers/mail.js';
+import { initWebhooksModule } from './app/webhooks/webhooks.module.js';
 
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 const mongoClient = new MongoClient(envVariables.MONGO_DB_URL);
-const db = mongoClient.db("broadcast");
-export const jwtProvider = new JWTProvider();
+const db = mongoClient.db('broadcast');
+const jwtProvider = new JWTProvider();
 const realtimeRepository = new RealtimeRepository(wss, redis, jwtProvider);
-const authModule = initAuthModule();
 
 Sentry.init({
   enabled: !__DEV__,
@@ -45,9 +46,18 @@ const start = async () => {
   // keep this before all routes
   initMiddleware(app, redis);
 
+  // ==== MODULES ====
+  const authModule = await initAuthModule({
+    emailQueue,
+    db,
+  });
+  const webhooksModule = initWebhooksModule();
+  // ================
+
   // ==== ROUTES ====
   app.use('/auth', authModule);
   app.use('/health', healthRouter);
+  app.use('/webhooks', webhooksModule);
   // ================
 
   app
@@ -58,7 +68,8 @@ const start = async () => {
     .use(globalErrorHandler());
 
   server.listen(envVariables.PORT, () => {
-    logger.info(`Server is running at http://localhost:${envVariables.PORT}`);
+    logger.info(`Server is running at http://localhost:
+    ${envVariables.PORT}`);
   });
 };
 

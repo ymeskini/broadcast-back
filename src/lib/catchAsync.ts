@@ -6,7 +6,7 @@ export const catchAsync =
       req: Request<TParams, TResponse, TBody, TQuery, Record<string, any>>,
       res: Response<TResponse, Record<string, any>>,
       next: NextFunction,
-    ) => any,
+    ) => Promise<void>,
   ): RequestHandler<TParams, TResponse, TBody, TQuery, Record<string, any>> =>
   (req, res, next) =>
     fn(req, res, next).catch(next);

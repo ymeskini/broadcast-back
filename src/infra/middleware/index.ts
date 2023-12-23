@@ -9,16 +9,15 @@ import RedisStore from 'connect-redis';
 import { __DEV__, envVariables } from '../../lib/env.js';
 import { RedisClientType } from '../modules/redis.js';
 import { AppError } from '../../lib/AppError.js';
+import { AuthSessionData } from '../../app/auth/auth.module.js';
 
 declare module 'express-session' {
   interface SessionData {
-    secretOtp?: string;
-    email?: string;
-    userId?: string;
+    auth: Partial<AuthSessionData>;
   }
 }
 
-const ORIGINS = ["http://localhost:5173"];
+const ORIGINS = ['http://localhost:5173'];
 
 export const initMiddleware = (app: Express, redis: RedisClientType) => {
   const redisStore = new RedisStore({
@@ -27,15 +26,20 @@ export const initMiddleware = (app: Express, redis: RedisClientType) => {
   });
 
   app
-    .set('trust proxy', 1)
     .use(Sentry.Handlers.requestHandler())
-    .use(express.json())
+    .use((req, res, next) => {
+      if (req.originalUrl.includes('/webhooks')) {
+        return next();
+      } else {
+        express.json()(req, res, next);
+      }
+    })
     .use(express.urlencoded({ extended: true }))
     .use(compression())
     .use(
       cors({
         origin: function (origin, callback) {
-          if (origin && ORIGINS.indexOf(origin) !== -1 || __DEV__) {
+          if ((origin && ORIGINS.indexOf(origin) !== -1) || __DEV__) {
             callback(null, true);
           } else {
             callback(new AppError('Forbidden', 403));
@@ -54,6 +58,8 @@ export const initMiddleware = (app: Express, redis: RedisClientType) => {
         resave: false,
         saveUninitialized: false,
         unset: 'destroy',
+        rolling: true,
+        proxy: true,
         secret: [envVariables.SESSION_SECRET],
         cookie: {
           secure: !__DEV__,
