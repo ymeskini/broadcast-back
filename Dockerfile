@@ -8,6 +8,7 @@ RUN npm ci
 COPY . .
 
 FROM base as build
+RUN npm i @swc/core -D
 RUN npm run build
 
 FROM node:20-alpine as deployment
