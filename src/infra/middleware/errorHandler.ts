@@ -18,14 +18,14 @@ const sendErrorDev = (err: AppError, res: Response) => {
 
 const sendErrorProd = (err: AppError, res: Response) => {
   if (err.isOperational) {
-    res.json({
+    res.status(err.statusCode).json({
       message: err.message,
       status: err.statusCode,
     });
   } else {
     // don't leak the error to the client
     logger.error(err);
-    res.json({
+    res.status(500).json({
       message: 'Something went wrong',
       status: 500,
     });

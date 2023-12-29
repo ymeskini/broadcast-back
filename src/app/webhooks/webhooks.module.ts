@@ -5,13 +5,12 @@ import { compareSignatures, createHmacSignature } from './webhooks.helpers.js';
 import { envVariables } from '../../lib/env.js';
 import { catchAsync } from '../../lib/catchAsync.js';
 import { validateRequest } from '../../infra/middleware/validateRequest.js';
+import { logger } from '../../lib/logger.js';
 
 export const initWebhooksModule = () => {
   const router = Router();
   const headerSignatureSchema = z.string();
-  const emailBodySchema = z.object({
-    type: z.string(),
-  });
+  const webhookLogger = logger.child({ module: 'webhooks' });
 
   router.use(express.raw({ type: 'application/json' }));
 
@@ -28,8 +27,7 @@ export const initWebhooksModule = () => {
         );
 
         if (compareSignatures(signature, computedSignature)) {
-          const mailBody = emailBodySchema.parse(JSON.parse(body.toString()));
-          console.log(mailBody);
+          webhookLogger.info(body.toString(), '[MAILING]');
           res.sendStatus(200);
         } else {
           res.sendStatus(403);

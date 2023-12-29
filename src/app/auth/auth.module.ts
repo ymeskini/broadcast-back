@@ -2,21 +2,22 @@ import { Router } from 'express';
 import { z } from 'zod';
 import crypto from 'node:crypto';
 import { totp } from 'otplib';
-import { Db, ObjectId } from 'mongodb';
+import { ObjectId } from 'mongodb';
 
 import { catchAsync } from '../../lib/catchAsync.js';
 import { validateRequest } from '../../infra/middleware/validateRequest.js';
 import { AppError } from '../../lib/AppError.js';
 import { EmailQueue } from '../../infra/workers/mail.js';
+import { emailString } from '../../lib/commonSchemas.js';
+import { Session, SessionData } from 'express-session';
+import { UserModel } from '../user/user.model.js';
 
 type AuthModuleDependencies = {
   emailQueue: EmailQueue;
-  db: Db;
+  userModel: UserModel;
 };
 
-const emailString = z.string().email();
-
-const sessionSchema = z.object({
+export const sessionSchema = z.object({
   email: emailString,
   secretOtp: z.string(),
   userId: z.string(),
@@ -34,19 +35,13 @@ const authRequestSchema = {
   }),
 };
 
-const userSchema = z.object({
-  email: emailString,
-});
-
 const OTP_LENGTH = 6;
 
 export const initAuthModule = async ({
   emailQueue,
-  db,
+  userModel,
 }: AuthModuleDependencies) => {
   const router = Router();
-  const userCollection = db.collection<z.infer<typeof userSchema>>('users');
-  await userCollection.createIndex({ email: 1 });
 
   totp.options = {
     step: 5 * 60,
@@ -65,27 +60,15 @@ export const initAuthModule = async ({
     });
   };
 
-  router.post(
-    '/verify',
-    validateRequest(
-      {},
-      catchAsync(async (req, res) => {
-        const auth = sessionSchema.parse(req.session.auth);
-        const user = await userCollection.findOne({
-          _id: new ObjectId(auth.userId),
-        });
+  const parseAuthSession = (session: Session & Partial<SessionData>) => {
+    const sessionParsed = sessionSchema.safeParse(session.auth);
 
-        if (!user) {
-          throw new AppError('User not found', 404);
-        }
+    if (!sessionParsed.success) {
+      throw new AppError('Invalid session', 401);
+    }
 
-        res.json({
-          status: 200,
-          message: 'User verified',
-        });
-      }),
-    ),
-  );
+    return sessionParsed.data;
+  };
 
   router.post(
     '/otp',
@@ -97,8 +80,8 @@ export const initAuthModule = async ({
       },
       catchAsync(async (req, res) => {
         const { code } = req.body;
-        const { email, userId, secretOtp, flow } = sessionSchema.parse(
-          req.session.auth,
+        const { email, userId, flow, secretOtp } = parseAuthSession(
+          req.session,
         );
 
         if (
@@ -115,15 +98,14 @@ export const initAuthModule = async ({
         }
 
         if (flow === 'signup') {
-          await userCollection.insertOne({
+          await userModel.create({
             email,
             _id: new ObjectId(userId),
           });
         }
 
         res.json({
-          status: 200,
-          message: 'OTP verified',
+          success: true,
         });
       }),
     ),
@@ -135,7 +117,9 @@ export const initAuthModule = async ({
       if (err) {
         throw new AppError('Internal Error', 500);
       }
-      res.sendStatus(204);
+      res.json({
+        success: true,
+      });
     });
   });
 
@@ -146,7 +130,7 @@ export const initAuthModule = async ({
       catchAsync(async (req, res) => {
         const { email } = req.body;
         const { flow } = req.params;
-        const user = await userCollection.findOne({ email });
+        const user = await userModel.find({ email });
 
         if (user && flow === 'signup') {
           throw new AppError('User already exists', 409);
@@ -156,7 +140,8 @@ export const initAuthModule = async ({
           throw new AppError('User not found', 404);
         }
 
-        const userId = user?._id.toString() ?? new ObjectId().toString();
+        const userId =
+          flow === 'signup' ? new ObjectId().toString() : user._id.toString();
         const rollingSecret = crypto.randomBytes(32).toString('hex');
 
         req.session.auth = {
@@ -169,7 +154,7 @@ export const initAuthModule = async ({
         await generateOtpAndSendEmail(email, rollingSecret);
 
         res.json({
-          status: 200,
+          success: true,
         });
       }),
     ),

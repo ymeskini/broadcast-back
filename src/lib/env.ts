@@ -1,14 +1,12 @@
 import { z } from 'zod';
 
 const envSchema = z.object({
-  AWS_ACCESS_KEY_ID: z.string(),
-  AWS_REGION: z.string().default('eu-central-1'),
-  AWS_SECRET_ACCESS_KEY: z.string(),
-  AWS_S3_BUCKET_NAME: z.string(),
+  DB_ENCRYPTION_KEY: z.string(),
   EMAIL_API_KEY: z.string(),
   EMAIL_SUPPORT: z.string(),
   EMAIL_SIGNATURE_SECRET: z.string(),
   ENVIRONMENT: z.string().optional(),
+  JWT_SECRET: z.string(),
   MONGO_DB_URL: z.string(),
   PORT: z.string().default('4444'),
   REDIS_HOST: z.string(),
@@ -17,6 +15,8 @@ const envSchema = z.object({
   SENTRY_DSN: z.string().optional(),
   SESSION_DOMAIN: z.string(),
   SESSION_SECRET: z.string(),
+  TWITCH_ID: z.string(),
+  TWITCH_SECRET: z.string(),
 });
 
 export const envVariables = envSchema.parse(process.env);

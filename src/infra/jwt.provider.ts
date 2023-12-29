@@ -1,55 +1,31 @@
-import { KeyLike, SignJWT, importPKCS8, jwtVerify } from 'jose';
-import { GetObjectCommand } from '@aws-sdk/client-s3';
-import { readFileSync } from 'node:fs';
+import { SignJWT, jwtVerify } from 'jose';
 
-import { s3Client } from './modules/s3.js';
-import { AppError } from '../lib/AppError.js';
-import { __DEV__, envVariables } from '../lib/env.js';
+import { envVariables } from '../lib/env.js';
 
-const ALGORITHM = 'RS256' as const;
-const FILE_NAME = 'private.pem' as const;
+const ALGORITHM = 'HS256';
 
 export class JWTProvider {
-  private privateKey!: KeyLike;
+  private secret!: Uint8Array;
 
-  async load() {
-    if (__DEV__) {
-      const privatekey = readFileSync(FILE_NAME).toString();
-      this.privateKey = await importPKCS8(privatekey, ALGORITHM);
-      return;
-    }
-    const result = await s3Client.send(
-      new GetObjectCommand({
-        Bucket: envVariables.AWS_S3_BUCKET_NAME,
-        Key: FILE_NAME,
-      }),
-    );
-
-    if (!result.Body) {
-      throw new AppError('Could not load private key from S3', 500);
-    }
-
-    const fileContent = await result.Body.transformToString();
-    const privateKey = await importPKCS8(fileContent, ALGORITHM);
-
-    this.privateKey = privateKey;
+  async init() {
+    this.secret = new TextEncoder().encode(envVariables.JWT_SECRET);
   }
 
-  async generateToken() {
-    const token = await new SignJWT()
+  generateToken(payload: any, userId: string) {
+    const token = new SignJWT(payload)
       .setProtectedHeader({
         alg: ALGORITHM,
+        b64: true,
       })
-      .sign(this.privateKey);
+      .setSubject(userId)
+      .setExpirationTime('1h');
 
-    return token;
+    return token.sign(this.secret);
   }
 
-  async verifyToken(token: string) {
-    const decoded = await jwtVerify(token, this.privateKey, {
+  verifyToken(token: string) {
+    return jwtVerify(token, this.secret, {
       algorithms: [ALGORITHM],
     });
-
-    return decoded;
   }
 }

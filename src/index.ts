@@ -11,11 +11,13 @@ import { globalErrorHandler } from './infra/middleware/errorHandler.js';
 import { AppError } from './lib/AppError.js';
 import { RealtimeRepository } from './infra/realtime.gateway.js';
 import { redis } from './infra/modules/redis.js';
-import { healthRouter } from './infra/health.routes.js';
+import { initHealthModule } from './infra/health.routes.js';
 import { JWTProvider } from './infra/jwt.provider.js';
 import { initAuthModule } from './app/auth/auth.module.js';
 import { emailQueue } from './infra/workers/mail.js';
 import { initWebhooksModule } from './app/webhooks/webhooks.module.js';
+import { initPlatformsModule } from './app/platforms/platforms.module.js';
+import { initUserModule } from './app/user/user.module.js';
 
 const app = express();
 const server = http.createServer(app);
@@ -28,6 +30,8 @@ const realtimeRepository = new RealtimeRepository(wss, redis, jwtProvider);
 Sentry.init({
   enabled: !__DEV__,
   dsn: envVariables.SENTRY_DSN,
+  profilesSampleRate: 1.0,
+  tracesSampleRate: 1.0,
   integrations: [
     new Sentry.Integrations.Http({ tracing: true }),
     new Sentry.Integrations.Express({ app }),
@@ -40,24 +44,34 @@ Sentry.init({
 const start = async () => {
   await mongoClient.connect();
   await redis.connect();
-  await jwtProvider.load();
+  await jwtProvider.init();
   await realtimeRepository.init();
 
   // keep this before all routes
   initMiddleware(app, redis);
 
   // ==== MODULES ====
+  const userModule = await initUserModule(db);
   const authModule = await initAuthModule({
     emailQueue,
-    db,
+    userModel: userModule.userModel,
   });
   const webhooksModule = initWebhooksModule();
+  const healthModule = initHealthModule({
+    db,
+    redis,
+  });
+  const platformsModule = initPlatformsModule({
+    redis,
+    jwtProvider,
+  });
   // ================
 
   // ==== ROUTES ====
   app.use('/auth', authModule);
-  app.use('/health', healthRouter);
+  app.use('/health', healthModule);
   app.use('/webhooks', webhooksModule);
+  app.use('/platforms', platformsModule);
   // ================
 
   app

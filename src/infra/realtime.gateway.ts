@@ -32,7 +32,8 @@ declare module 'ws' {
   }
 }
 
-const HEARTBEAT_INTERVAL = 60000 * 5;
+const HEARTBEAT_INTERVAL = 30000;
+const TIME_TO_RESPOND = 10000;
 
 export class RealtimeRepository {
   private readonly publisher: RedisClientType;
@@ -91,6 +92,15 @@ export class RealtimeRepository {
 
       ws.isAlive = false;
       this.sendMessage(socketId, { type: 'PING' });
+
+      const timeout = setTimeout(() => {
+        const ws = this.clients.get(socketId);
+        if (ws && !ws.isAlive) {
+          clearInterval(ws.interval);
+          ws.terminate();
+        }
+        clearTimeout(timeout);
+      }, TIME_TO_RESPOND);
     }
   };
 
